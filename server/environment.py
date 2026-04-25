@@ -373,7 +373,7 @@ class UniversalNodeEnv:
             info["reason"] = "SECURITY BREACH: Unauthorized modification of non-dependency fields detected."
             self._current_errors.append(info["reason"])
             logger.error(f"🚨 {info['reason']} Details: {str(e)}")
-            return self.state(), -500.0, True, info
+            return self.state(), -500.0, True, False, info
 
         # ──────────────────────────────────────────────────────────────
         # CHECK 1: Validate the action against the registry
@@ -399,6 +399,7 @@ class UniversalNodeEnv:
                     self.state(),
                     REWARD_INVALID_ACTION,
                     True,
+                    False,
                     info,
                 )
 
@@ -415,6 +416,7 @@ class UniversalNodeEnv:
                     self.state(),
                     REWARD_INVALID_ACTION,
                     True,
+                    False,
                     info,
                 )
                 
@@ -428,7 +430,7 @@ class UniversalNodeEnv:
                 
                 # Apply step penalty, append error, and immediately return without mutating state
                 self._current_errors.append("HTTP 503 Service Unavailable: Registry timeout during action.")
-                return self.state(), REWARD_STEP_PENALTY, False, info
+                return self.state(), REWARD_STEP_PENALTY, False, False, info
 
         # ──────────────────────────────────────────────────────────────
         # CHECK 2: ANTI-CHEAT VALIDATOR (The Nuke Detector)
@@ -460,6 +462,7 @@ class UniversalNodeEnv:
                     self.state(),
                     REWARD_NUKE_PENALTY,
                     True,
+                    False,
                     info,
                 )
 
@@ -521,11 +524,10 @@ class UniversalNodeEnv:
             info["reason"] = "Agent entered an infinite loop (revisited state). Terminated."
             self._current_errors.append(info["reason"])
             
-            # ── Auto-Tuner ──
             if getattr(self, "_is_curriculum_episode", False):
                 self._curriculum.record_outcome(False)
                 
-            return self.state(), reward, True, info
+            return self.state(), reward, True, False, info
             
         self._visited_states.add(state_hash)
 
@@ -569,7 +571,7 @@ class UniversalNodeEnv:
                 self.step_count,
                 reward,
             )
-            return self.state(), reward, True, info
+            return self.state(), reward, True, False, info
 
         # Step Limit Exceeded: Agent ran out of moves
         if self.step_count > MAX_STEPS:
@@ -588,13 +590,13 @@ class UniversalNodeEnv:
                 self.step_count,
                 new_error_count,
             )
-            return self.state(), reward, True, info
+            return self.state(), reward, False, True, info
 
         # ── Episode continues ────────────────────────────────────────
         info["conflicts_remaining"] = new_error_count
         info["progress_delta"] = delta
 
-        return self.state(), reward, False, info
+        return self.state(), reward, False, False, info
 
     # ══════════════════════════════════════════════════════════════════
     # Render (for debugging and human review)

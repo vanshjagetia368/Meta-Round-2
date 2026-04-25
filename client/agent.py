@@ -67,8 +67,8 @@ class _LocalClient:
     def step(
         self,
         action: Action,
-    ) -> tuple[Observation, float, bool, dict[str, Any]]:
-        """Execute an action, returns (obs, reward, done, info)."""
+    ) -> tuple[Observation, float, bool, bool, dict[str, Any]]:
+        """Execute an action, returns (obs, reward, terminated, truncated, info)."""
         return self._env.step(action)
 
     def state(self) -> Observation:
@@ -104,7 +104,9 @@ def build_llm_prompt(obs: Observation) -> str:
     str
         A self-contained prompt string.
     """
-    return f"""You are an expert npm dependency resolver AI.
+    return f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+You are an expert npm dependency resolver AI.<|eot_id|><|start_header_id|>user<|end_header_id|>
 
 ## Current State (Step {obs.step_count}, Complexity Level {obs.complexity_level})
 
@@ -135,7 +137,9 @@ Resolve ONE conflict by choosing an action. You must output ONLY valid JSON matc
 - Do NOT delete packages that other packages require.
 - Focus on resolving the FIRST listed conflict.
 
-Output ONLY the JSON object, no explanation."""
+Output ONLY the JSON object, no explanation.<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+"""
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -242,7 +246,8 @@ class NodeResolverAgent:
 
             # 3. Step the environment
             try:
-                obs, reward, done, info = self.client.step(action)
+                obs, reward, terminated, truncated, info = self.client.step(action)
+                done = terminated or truncated
             except RuntimeError as e:
                 logger.error("Environment error: %s", e)
                 break
@@ -288,12 +293,10 @@ class NodeResolverAgent:
         """
         text = raw_response.strip()
 
-        # Strip markdown code fences if present
-        if "```" in text:
-            # Extract content between code fences
-            match = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", text, re.DOTALL)
-            if match:
-                text = match.group(1).strip()
+        # Attempt to extract JSON block using regex if conversational text is present
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if match:
+            text = match.group(0).strip()
 
         # Parse JSON
         data = json.loads(text)

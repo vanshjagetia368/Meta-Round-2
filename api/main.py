@@ -69,7 +69,7 @@ def get_planner():
         # If openenv-server is reachable (via docker compose), we'd use its URL.
         openenv_url = os.getenv("OPENENV_URL", "local")
         
-        _agent = NodeResolverAgent(url=openenv_url)
+        _agent = NodeResolverAgent(connection_url=None if openenv_url == "local" else openenv_url)
         _planner = HybridSemVerPlanner(_agent, num_samples=3)
     return _agent, _planner
 
@@ -122,7 +122,8 @@ async def autofix_pull_request(payload: GitHubWebhookPayload):
             # The Hybrid MCTS Planner evaluates multiple trajectories
             action = planner.plan_next_action(obs, mock_inference)
             
-            obs, reward, done, info = agent.client.step(action)
+            obs, reward, terminated, truncated, info = agent.client.step(action)
+            done = terminated or truncated
             total_reward += reward
             
         if not done or obs.npm_error_log:

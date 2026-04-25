@@ -91,7 +91,8 @@ def simulate_llm_step(step_count: int, total_reward: float) -> tuple:
     }, indent=2)
 
     # ── Execute Step ──
-    new_obs, reward, done, info = agent.client.step(target_action)
+    new_obs, reward, terminated, truncated, info = agent.client.step(target_action)
+    done = terminated or truncated
     
     new_pkg_json = new_obs.current_package_json
     new_errors = new_obs.npm_error_log if new_obs.npm_error_log else "✅ Install Successful! No conflicts."

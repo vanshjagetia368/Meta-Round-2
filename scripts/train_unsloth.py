@@ -107,12 +107,13 @@ def main():
     # ──────────────────────────────────────────────────────────────────────
     logger.info("Initializing PPO Trainer and OpenEnv Agent...")
     
-    # PPO configuration optimized for quick learning in a simulated environment
+    # PPO configuration optimized for 16GB VRAM (T4 GPU) stability
     ppo_config = PPOConfig(
-        batch_size=1,            # Update after every step (or mini-batch)
-        mini_batch_size=1,       # Minimum viable batch size
-        learning_rate=1.41e-5,   # Standard stable LR for PPO fine-tuning
-        log_with=None,           # Disable remote wandb/tensorboard for local demo
+        batch_size=4,                    # Small total batch size
+        mini_batch_size=1,               # Absolute minimum mini-batch to prevent OOM
+        gradient_accumulation_steps=4,   # Accumulate to simulate larger batch size safely
+        learning_rate=1.41e-5,           # Standard stable LR for PPO fine-tuning
+        log_with=None,                   # Disable remote wandb/tensorboard for local demo
     )
 
     # Initialize TRL's PPOTrainer
@@ -185,7 +186,8 @@ def main():
                 )
 
             # 5. Execute step in OpenEnv, receive scalar shaped reward
-            obs, reward, done, info = agent.client.step(action)
+            obs, reward, terminated, truncated, info = agent.client.step(action)
+            done = terminated or truncated
             total_ep_reward += reward
             
             # Switch back to training mode for the PPO update

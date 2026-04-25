@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  openenv-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    networks:
+      - openenv-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  github-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8080:8080"
+    environment:
+      - OPENENV_URL=http://openenv-server:8000
+    depends_on:
+      openenv-server:
+        condition: service_healthy
+    networks:
+      - openenv-net
+
+  gradio-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    ports:
+      - "7860:7860"
+    environment:
+      - OPENENV_URL=http://openenv-server:8000
+    depends_on:
+      openenv-server:
+        condition: service_healthy
+    networks:
+      - openenv-net
+
+networks:
+  openenv-net:
+    driver: bridge

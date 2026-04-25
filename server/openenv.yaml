@@ -1,0 +1,75 @@
+# =============================================================================
+# OpenEnv Manifest — Universal-Node-Resolver
+# =============================================================================
+# This manifest registers the RL environment with the Meta OpenEnv runtime.
+# It is MANDATORY for deployment to Hugging Face Spaces and for discovery
+# by any OpenEnv-compatible training harness.
+#
+# Specification version: OpenEnv v1.0
+# =============================================================================
+
+environment:
+  # --- Identity -----------------------------------------------------------
+  name: "Universal-Node-Resolver"
+  version: "1.0.0"
+  description: >
+    Universal RL environment for SemVer constraint satisfaction.
+    Trains an LLM agent to autonomously resolve multi-layered dependency
+    and peerDependency conflicts across dynamically generated, arbitrary
+    npm package ecosystems. All resolution is performed via high-speed
+    mock simulation — no real npm commands are executed.
+
+  # --- Entrypoint ---------------------------------------------------------
+  # The OpenEnv runtime will import and instantiate this class.
+  entrypoint: "server/environment.py:UniversalNodeEnv"
+
+  # --- Gym-like Metadata --------------------------------------------------
+  metadata:
+    author: "Team Hackathon"
+    license: "MIT"
+    tags:
+      - reinforcement-learning
+      - dependency-resolution
+      - semver
+      - npm
+      - llm-agent
+      - constraint-satisfaction
+    render_modes:
+      - "human"
+      - "json"
+
+  # --- Observation & Action Spaces ----------------------------------------
+  observation:
+    type: "dict"
+    schema: "server/models.py:Observation"
+
+  action:
+    type: "dict"
+    schema: "server/models.py:Action"
+
+  # --- Reward Signal ------------------------------------------------------
+  reward:
+    type: "float"
+    range: [-10.0, 10.0]
+    description: >
+      Multi-signal reward combining conflict reduction delta,
+      dependency graph health, version freshness score,
+      and a completion bonus on full resolution.
+
+  # --- Episode Configuration ----------------------------------------------
+  episode:
+    max_steps: 150
+    termination:
+      - "all_conflicts_resolved"
+      - "max_steps_exceeded"
+      - "invalid_action_limit_reached"
+
+  # --- Complexity Tiers ---------------------------------------------------
+  complexity:
+    levels: [1, 2, 3, 4, 5]
+    description: >
+      Level 1: 3-5 packages, single-depth dependencies.
+      Level 2: 5-8 packages, peer dependencies introduced.
+      Level 3: 8-12 packages, diamond dependency patterns.
+      Level 4: 12-18 packages, cyclic peer constraints.
+      Level 5: 18-25 packages, adversarial version matrices.

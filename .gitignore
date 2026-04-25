@@ -1,0 +1,66 @@
+# ==============================================================================
+# Universal-Node-Resolver .gitignore
+# ==============================================================================
+
+# 1. Python & Gradio Caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.gradio/
+.coverage
+htmlcov/
+.tox/
+
+# 2. Machine Learning Weights & Checkpoints (Heavy Files)
+*.pt
+*.pth
+*.safetensors
+*.bin
+*.ckpt
+models/trained_resolver_lora/
+# Ignore unsloth intermediate checkpoints if any
+checkpoint-*/
+
+# 3. Environment Variables & Secrets
+.env
+.env.*
+secrets.json
+credentials.json
+*.pem
+
+# 4. Logs & Telemetry
+wandb/
+*.log
+tensorboard_logs/
+runs/
+
+# 5. OS-Specific Junk
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 6. Python Virtual Environments
+venv/
+env/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# 7. IDE & Tooling
+.vscode/
+.idea/
+*.swp
+*.swo
+.ipynb_checkpoints/
+
+# ==============================================================================
+# ALLOW-LIST
+# ==============================================================================
+# Explicitly ensure the assets directory (reward curves, demo GIFs) is tracked
+!assets/

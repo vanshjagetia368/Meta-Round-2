@@ -120,6 +120,29 @@ def main():
     # the forward() pass crashes on self.is_peft_model check.
     model.is_peft_model = True
     
+    # --- ANTIGRAVITY: FIX UNSLOTH INPLACE RMSNORM BUG ---
+    # Unsloth patches LlamaRMSNorm to use `x *= self.weight` (inplace) for VRAM savings.
+    # This corrupts PyTorch's autograd graph during TRL's PPO backward pass.
+    # We replace ALL RMSNorm forward methods with safe out-of-place versions.
+    import types
+    
+    def _safe_rmsnorm_forward(self, hidden_states):
+        input_dtype = hidden_states.dtype
+        hidden_states = hidden_states.to(torch.float32)
+        variance = hidden_states.pow(2).mean(-1, keepdim=True)
+        hidden_states = hidden_states * torch.rsqrt(variance + self.variance_epsilon)
+        # OUT-OF-PLACE multiply: `weight * x` instead of `x *= weight`
+        return (self.weight * hidden_states).to(input_dtype)
+    
+    patched_count = 0
+    for module in model.modules():
+        cls_name = module.__class__.__name__
+        if 'RMSNorm' in cls_name:
+            module.forward = types.MethodType(_safe_rmsnorm_forward, module)
+            patched_count += 1
+    logger.info(f"ANTIGRAVITY: Patched {patched_count} RMSNorm layers to out-of-place mode.")
+    # ------------------------------------------------
+    
     # PPO configuration optimized for 16GB VRAM (T4 GPU) stability
     ppo_config = PPOConfig(
         batch_size=4,                    # Small total batch size

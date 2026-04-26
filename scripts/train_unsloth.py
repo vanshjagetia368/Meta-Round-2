@@ -212,21 +212,33 @@ def main():
             # Switch back to training mode for the PPO update
             FastLanguageModel.for_training(model)
             
-            # 6. PPO Step
+            # 6. PPO Step Buffer
             # Feed the exact state (query), action (response), and environment reward back to PPO
             reward_tensor = torch.tensor(reward, dtype=torch.float32, device=ppo_trainer.accelerator.device)
             
-            train_stats = ppo_trainer.step(
-                [query_tensor],
-                [response_tensor],
-                [reward_tensor]
-            )
+            # Accumulate into batch lists attached to the trainer
+            if not hasattr(ppo_trainer, "_query_buffer"):
+                ppo_trainer._query_buffer = []
+                ppo_trainer._response_buffer = []
+                ppo_trainer._reward_buffer = []
+                
+            ppo_trainer._query_buffer.append(query_tensor)
+            ppo_trainer._response_buffer.append(response_tensor)
+            ppo_trainer._reward_buffer.append(reward_tensor)
             
-            # ANTIGRAVITY: Prevent Pytorch CUDA Memory Leak
-            del query_tensor
-            del response_tensor
-            del reward_tensor
-            torch.cuda.empty_cache()
+            # Execute PPO step only when batch is full
+            if len(ppo_trainer._query_buffer) == ppo_config.batch_size:
+                train_stats = ppo_trainer.step(
+                    ppo_trainer._query_buffer,
+                    ppo_trainer._response_buffer,
+                    ppo_trainer._reward_buffer
+                )
+                
+                # ANTIGRAVITY: Prevent Pytorch CUDA Memory Leak
+                ppo_trainer._query_buffer.clear()
+                ppo_trainer._response_buffer.clear()
+                ppo_trainer._reward_buffer.clear()
+                torch.cuda.empty_cache()
             
             step_idx += 1
             

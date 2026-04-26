@@ -261,11 +261,19 @@ def main():
             
             # Execute PPO step only when batch is full
             if len(ppo_trainer._query_buffer) == ppo_config.batch_size:
-                train_stats = ppo_trainer.step(
-                    ppo_trainer._query_buffer,
-                    ppo_trainer._response_buffer,
-                    ppo_trainer._reward_buffer
-                )
+                # ANTIGRAVITY NUCLEAR: Temporarily make ALL *= operations out-of-place.
+                # Unsloth's compiled Triton kernels use inplace *= at the C level,
+                # which Python-level forward() patches cannot intercept.
+                _orig_imul = torch.Tensor.__imul__
+                torch.Tensor.__imul__ = lambda self, other: torch.Tensor.mul(self, other)
+                try:
+                    train_stats = ppo_trainer.step(
+                        ppo_trainer._query_buffer,
+                        ppo_trainer._response_buffer,
+                        ppo_trainer._reward_buffer
+                    )
+                finally:
+                    torch.Tensor.__imul__ = _orig_imul
                 
                 # ANTIGRAVITY: Prevent Pytorch CUDA Memory Leak
                 ppo_trainer._query_buffer.clear()

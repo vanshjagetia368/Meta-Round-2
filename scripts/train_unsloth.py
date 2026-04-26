@@ -31,6 +31,28 @@ import sys
 import matplotlib.pyplot as plt
 import torch
 
+# --- ANTIGRAVITY HOTFIX: RESTORE DELETED HUGGINGFACE FUNCTION ---
+import transformers
+def _top_k_top_p_filtering(logits, top_k=0, top_p=1.0, filter_value=-float("Inf"), min_tokens_to_keep=1):
+    if top_k > 0:
+        top_k = min(max(top_k, min_tokens_to_keep), logits.size(-1))
+        indices_to_remove = logits < torch.topk(logits, top_k)[0][..., -1, None]
+        logits[indices_to_remove] = filter_value
+    if top_p < 1.0:
+        sorted_logits, sorted_indices = torch.sort(logits, descending=True)
+        cumulative_probs = torch.cumsum(torch.softmax(sorted_logits, dim=-1), dim=-1)
+        sorted_indices_to_remove = cumulative_probs > top_p
+        if min_tokens_to_keep > 1:
+            sorted_indices_to_remove[..., :min_tokens_to_keep] = 0
+        sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
+        sorted_indices_to_remove[..., 0] = 0
+        indices_to_remove = sorted_indices_to_remove.scatter(1, sorted_indices, sorted_indices_to_remove)
+        logits[indices_to_remove] = filter_value
+    return logits
+
+transformers.top_k_top_p_filtering = _top_k_top_p_filtering
+# ----------------------------------------------------------------
+
 # Unsloth enables 2x faster, memory-efficient LoRA training
 from unsloth import FastLanguageModel
 

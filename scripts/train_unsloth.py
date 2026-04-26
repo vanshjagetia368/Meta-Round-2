@@ -114,6 +114,10 @@ def main():
     # Wrap the PEFT model with a Value Head for PPO's Actor-Critic architecture
     from trl import AutoModelForCausalLMWithValueHead
     model = AutoModelForCausalLMWithValueHead(model)
+    # ANTIGRAVITY: TRL's from_pretrained() normally sets this flag, but we use the
+    # direct constructor with an already-loaded Unsloth PEFT model. Without it,
+    # the forward() pass crashes on self.is_peft_model check.
+    model.is_peft_model = True
     
     # PPO configuration optimized for 16GB VRAM (T4 GPU) stability
     ppo_config = PPOConfig(

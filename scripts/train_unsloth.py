@@ -95,7 +95,7 @@ def main():
         lora_alpha=16,
         lora_dropout=0,       # 0 is recommended for Unsloth optimized training
         bias="none",
-        use_gradient_checkpointing="unsloth",
+        use_gradient_checkpointing=True,  # Standard PyTorch checkpointing (not "unsloth" which uses inplace ops that break TRL's autograd)
         # Target all standard projection modules for high-quality adapters
         target_modules=[
             "q_proj", "k_proj", "v_proj", "o_proj",
@@ -103,8 +103,9 @@ def main():
         ],
     )
     
-    # Enable native inference mode initially
-    FastLanguageModel.for_inference(model)
+    # NOTE: We do NOT call FastLanguageModel.for_inference/for_training here.
+    # Toggling these modes mutates the model's internal state (inplace ops on RMSNorm),
+    # which corrupts TRL's autograd graph during ppo_trainer.step() backward pass.
 
     # ──────────────────────────────────────────────────────────────────────
     # REQUIREMENT 2: RLHF / PPO Loop Integration
@@ -167,8 +168,6 @@ def main():
         total_ep_reward = 0.0
         
         while not done and step_idx < MAX_STEPS_PER_EPISODE:
-            # Switch to inference mode for text generation
-            FastLanguageModel.for_inference(model)
 
             # 2. Format the observation into a strict LLM Prompt
             prompt_text = build_llm_prompt(obs)
@@ -213,8 +212,6 @@ def main():
             done = terminated or truncated
             total_ep_reward += reward
             
-            # Switch back to training mode for the PPO update
-            FastLanguageModel.for_training(model)
             
             # 6. PPO Step Buffer
             # Feed the exact state (query), action (response), and environment reward back to PPO
@@ -226,9 +223,10 @@ def main():
                 ppo_trainer._response_buffer = []
                 ppo_trainer._reward_buffer = []
                 
-            ppo_trainer._query_buffer.append(query_tensor)
-            ppo_trainer._response_buffer.append(response_tensor)
-            ppo_trainer._reward_buffer.append(reward_tensor)
+            # Detach tensors to prevent cross-step autograd graph corruption
+            ppo_trainer._query_buffer.append(query_tensor.detach())
+            ppo_trainer._response_buffer.append(response_tensor.detach())
+            ppo_trainer._reward_buffer.append(reward_tensor.detach())
             
             # Execute PPO step only when batch is full
             if len(ppo_trainer._query_buffer) == ppo_config.batch_size:

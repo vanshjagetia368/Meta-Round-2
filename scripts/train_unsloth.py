@@ -111,6 +111,10 @@ def main():
     # ──────────────────────────────────────────────────────────────────────
     logger.info("Initializing PPO Trainer and OpenEnv Agent...")
     
+    # Wrap the PEFT model with a Value Head for PPO's Actor-Critic architecture
+    from trl import AutoModelForCausalLMWithValueHead
+    model = AutoModelForCausalLMWithValueHead(model)
+    
     # PPO configuration optimized for 16GB VRAM (T4 GPU) stability
     ppo_config = PPOConfig(
         batch_size=4,                    # Small total batch size

@@ -35,7 +35,11 @@ import torch
 from unsloth import FastLanguageModel
 
 # TRL (Transformer Reinforcement Learning) provides the PPO implementation
-from trl import PPOConfig, PPOTrainer
+from trl import PPOConfig
+import trl.trainer.ppo_trainer
+
+# Safely extract the original interactive trainer, shedding Unsloth's wrapper if present
+PPOTrainer = trl.trainer.ppo_trainer.PPOTrainer.__wrapped__ if hasattr(trl.trainer.ppo_trainer.PPOTrainer, '__wrapped__') else trl.trainer.ppo_trainer.PPOTrainer
 
 # Add project root to python path to resolve local imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))

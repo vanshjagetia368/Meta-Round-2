@@ -95,7 +95,7 @@ def main():
         lora_alpha=16,
         lora_dropout=0,       # 0 is recommended for Unsloth optimized training
         bias="none",
-        use_gradient_checkpointing=True,  # Standard PyTorch checkpointing (not "unsloth" which uses inplace ops that break TRL's autograd)
+        use_gradient_checkpointing=False,  # DISABLED: checkpointing re-runs forward, doubling inplace corruption
         # Target all standard projection modules for high-quality adapters
         target_modules=[
             "q_proj", "k_proj", "v_proj", "o_proj",
@@ -120,10 +120,10 @@ def main():
     # the forward() pass crashes on self.is_peft_model check.
     model.is_peft_model = True
     
-    # --- ANTIGRAVITY: FIX UNSLOTH INPLACE RMSNORM BUG ---
-    # Unsloth patches LlamaRMSNorm to use `x *= self.weight` (inplace) for VRAM savings.
-    # This corrupts PyTorch's autograd graph during TRL's PPO backward pass.
-    # We replace ALL RMSNorm forward methods with safe out-of-place versions.
+    # --- ANTIGRAVITY NUCLEAR FIX: STRIP ALL UNSLOTH INPLACE OPS ---
+    # Unsloth patches RMSNorm (x *= weight), MLP SwiGLU (gate *= silu), and attention
+    # layers with inplace ops for VRAM savings. These corrupt PyTorch autograd.
+    # We match modules by ATTRIBUTES (not class name) to catch Unsloth renames.
     import types
     
     def _safe_rmsnorm_forward(self, hidden_states):
@@ -131,16 +131,24 @@ def main():
         hidden_states = hidden_states.to(torch.float32)
         variance = hidden_states.pow(2).mean(-1, keepdim=True)
         hidden_states = hidden_states * torch.rsqrt(variance + self.variance_epsilon)
-        # OUT-OF-PLACE multiply: `weight * x` instead of `x *= weight`
         return (self.weight * hidden_states).to(input_dtype)
     
-    patched_count = 0
+    def _safe_mlp_forward(self, x):
+        down = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
+        return down
+    
+    patched_norm = 0
+    patched_mlp = 0
     for module in model.modules():
-        cls_name = module.__class__.__name__
-        if 'RMSNorm' in cls_name:
+        # Match RMSNorm by attributes (catches any Unsloth rename)
+        if hasattr(module, 'variance_epsilon') and hasattr(module, 'weight') and not hasattr(module, 'bias'):
             module.forward = types.MethodType(_safe_rmsnorm_forward, module)
-            patched_count += 1
-    logger.info(f"ANTIGRAVITY: Patched {patched_count} RMSNorm layers to out-of-place mode.")
+            patched_norm += 1
+        # Match MLP by SwiGLU attribute signature
+        elif hasattr(module, 'gate_proj') and hasattr(module, 'up_proj') and hasattr(module, 'down_proj') and hasattr(module, 'act_fn'):
+            module.forward = types.MethodType(_safe_mlp_forward, module)
+            patched_mlp += 1
+    logger.info(f"ANTIGRAVITY: Patched {patched_norm} Norm + {patched_mlp} MLP layers to out-of-place mode.")
     # ------------------------------------------------
     
     # PPO configuration optimized for 16GB VRAM (T4 GPU) stability

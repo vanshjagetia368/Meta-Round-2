@@ -121,24 +121,28 @@ def main():
 
     # Initialize TRL's PPOTrainer
     # (Notice ref_model=None: TRL automatically disables LoRA adapters to compute KL penalty!)
-    # --- ANTIGRAVITY BYPASS: UNSLOTH CACHE BUG FIX ---
-    try:
-        # Unsloth's compiled wrapper expects 'args' due to modern TRL mapping
-        ppo_trainer = PPOTrainer(
-            config=ppo_config,
-            args=ppo_config, 
-            model=model,
-            ref_model=None,
-            tokenizer=tokenizer,
-        )
-    except TypeError:
-        # Standard TRL 0.7.11 fallback
-        ppo_trainer = PPOTrainer(
-            config=ppo_config,
-            model=model,
-            ref_model=None,
-            tokenizer=tokenizer,
-        )
+    
+    # --- ANTIGRAVITY BYPASS: UNSLOTH AST PATCH BUG FIX ---
+    # Unsloth dynamically rewrites PPOTrainer and caches it, but its regex injection 
+    # creates an UnboundLocalError with 'args' on TRL 0.7.11. 
+    # We bypass this completely by loading the pure original script directly from disk.
+    import importlib.util
+    import trl.trainer.ppo_trainer
+    
+    spec = importlib.util.spec_from_file_location(
+        "pure_ppo_trainer", 
+        trl.trainer.ppo_trainer.__file__
+    )
+    pure_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(pure_module)
+    PurePPOTrainer = pure_module.PPOTrainer
+
+    ppo_trainer = PurePPOTrainer(
+        config=ppo_config,
+        model=model,
+        ref_model=None,
+        tokenizer=tokenizer,
+    )
     # -------------------------------------------------
 
     # Initialize our environment client (using the local shim)

@@ -125,17 +125,12 @@ def main():
     # --- ANTIGRAVITY BYPASS: UNSLOTH AST PATCH BUG FIX ---
     # Unsloth dynamically rewrites PPOTrainer and caches it, but its regex injection 
     # creates an UnboundLocalError with 'args' on TRL 0.7.11. 
-    # We bypass this completely by loading the pure original script directly from disk.
-    import importlib.util
+    # We bypass this completely by reloading the module to shed Unsloth's monkey-patch
+    # while preserving the parent package context for relative imports.
+    import importlib
     import trl.trainer.ppo_trainer
-    
-    spec = importlib.util.spec_from_file_location(
-        "pure_ppo_trainer", 
-        trl.trainer.ppo_trainer.__file__
-    )
-    pure_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(pure_module)
-    PurePPOTrainer = pure_module.PPOTrainer
+    importlib.reload(trl.trainer.ppo_trainer)
+    PurePPOTrainer = trl.trainer.ppo_trainer.PPOTrainer
 
     ppo_trainer = PurePPOTrainer(
         config=ppo_config,

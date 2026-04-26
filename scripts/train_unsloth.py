@@ -35,16 +35,7 @@ import torch
 from unsloth import FastLanguageModel
 
 # TRL (Transformer Reinforcement Learning) provides the PPO implementation
-# ANTIGRAVITY: Import PPOConfig normally, but bypass Unsloth's monkey-patched
-# PPOTrainer (which demands offline RLHF args: reward_model, train_dataset).
-# We need the ORIGINAL interactive PPOTrainer that supports .step() for Gym loops.
-from trl import PPOConfig
-try:
-    from trl.trainer.ppo_trainer import PPOTrainer
-except ImportError:
-    # Fallback: if TRL restructured, force-unwrap the monkey-patch
-    import trl
-    PPOTrainer = trl.PPOTrainer.__wrapped__ if hasattr(trl.PPOTrainer, '__wrapped__') else trl.PPOTrainer
+from trl import PPOConfig, PPOTrainer
 
 # Add project root to python path to resolve local imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))

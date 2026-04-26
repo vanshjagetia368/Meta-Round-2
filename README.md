@@ -15,9 +15,14 @@
 
 ---
 
-## 🎬 The Demo Video
-**Watch the God-Tier Architecture in Action:**  
-[📺 Click Here to View the Pitch & Live Demo on YouTube](https://youtube.com) *(Placeholder)*
+## 🔗 Submission Links
+
+| Resource | Link |
+| :--- | :--- |
+| 🤗 **HF Space (Live Environment)** | [https://huggingface.co/spaces/Salil-IND/npm-resolver-v0](https://huggingface.co/spaces/Salil-IND/npm-resolver-v0) |
+| 📓 **Training Notebook (Colab)** | *See `scripts/train_unsloth.py` in this repo* |
+| 📝 **Blog Post** | [BLOG.md](BLOG.md) |
+| 📊 **Training Results** | See [Results & Proof](#-results--proof) section below |
 
 ---
 
@@ -112,7 +117,7 @@ python3 scripts/simulate_github_pr.py
 
 ### Cloud Deployment
 Try out our UI live on our deployed Hugging Face Space:
-🔗 **[Universal-Node-Resolver HF Space](https://huggingface.co/)** *(Placeholder)*
+🔗 **[Universal-Node-Resolver HF Space](https://huggingface.co/spaces/Salil-IND/npm-resolver-v0)**
 
 ---
 <div align="center">

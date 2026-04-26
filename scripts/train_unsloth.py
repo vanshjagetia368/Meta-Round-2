@@ -214,7 +214,7 @@ def main():
             
             # 6. PPO Step
             # Feed the exact state (query), action (response), and environment reward back to PPO
-            reward_tensor = torch.tensor(reward, dtype=torch.float32, device=model.device)
+            reward_tensor = torch.tensor(reward, dtype=torch.float32, device=ppo_trainer.accelerator.device)
             
             train_stats = ppo_trainer.step(
                 [query_tensor],

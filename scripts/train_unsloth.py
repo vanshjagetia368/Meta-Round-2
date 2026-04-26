@@ -170,7 +170,7 @@ def main():
             prompt_text = build_llm_prompt(obs)
             
             # Encode prompt
-            query_tensor = tokenizer.encode(prompt_text, return_tensors="pt").to(model.device)[0]
+            query_tensor = tokenizer.encode(prompt_text, return_tensors="pt").to(ppo_trainer.accelerator.device)[0]
 
             # 3. Generate Action (Text)
             # Use PPOTrainer's generate to automatically track gradients & probabilities

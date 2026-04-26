@@ -236,12 +236,11 @@ class Observation(BaseModel):
     complexity_level: int = Field(
         ...,
         ge=1,
-        le=5,
+        le=10,
         description=(
             "The difficulty tier of the current dependency graph. "
-            "Ranges from 1 (simple, 3-5 packages) to 5 (adversarial, "
-            "18-25 packages with cyclic peer constraints and version "
-            "matrices)."
+            "Ranges from 1 (simple, 3-5 packages) to 10 (adversarial, "
+            "scaled by the curriculum engine for high-performing agents)."
         ),
     )
 

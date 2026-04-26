@@ -113,7 +113,6 @@ def main():
         mini_batch_size=1,               # Absolute minimum mini-batch to prevent OOM
         gradient_accumulation_steps=4,   # Accumulate to simulate larger batch size safely
         learning_rate=1.41e-5,           # Standard stable LR for PPO fine-tuning
-        log_with=None,                   # Disable remote wandb/tensorboard for local demo
     )
 
     # Initialize TRL's PPOTrainer
